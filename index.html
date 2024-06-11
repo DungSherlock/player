@@ -63,7 +63,7 @@
 <body>
     <h1>Video with Subtitles</h1>
     <div class="controls">
-        <input type="file" id="videoFile" accept="video/*" playsinline controls disablePictureInPicture>
+        <input type="file" id="videoFile" accept="video/*">
         <input type="file" id="subtitleFile1" accept=".srt">
         <input type="file" id="subtitleFile2" accept=".srt">
         <div class="speed-control">
@@ -72,7 +72,7 @@
             <button id="increaseSpeed">+</button>
         </div>
     </div>
-    <video id="video" controls>
+    <video id="video" playsinline controls disablePictureInPicture>
         <div id="subtitleOverlay"></div>
     </video>
     <ul id="subtitles1"></ul>
