@@ -15,12 +15,13 @@
             display: block;
             margin-bottom: 20px;
         }
-        #subtitles {
-            max-height: 300px;
+        #subtitles1, #subtitles2 {
+            max-height: 150px;
             overflow-y: auto;
             border: 1px solid #ccc;
             padding: 10px;
             list-style: none;
+            margin-bottom: 20px;
         }
         .subtitle {
             cursor: pointer;
@@ -51,7 +52,8 @@
     <h1>Video with Subtitles</h1>
     <div class="controls">
         <input type="file" id="videoFile" accept="video/*">
-        <input type="file" id="subtitleFile" accept=".srt">
+        <input type="file" id="subtitleFile1" accept=".srt">
+        <input type="file" id="subtitleFile2" accept=".srt">
         <div class="speed-control">
             <button id="decreaseSpeed">-</button>
             <span id="speedDisplay">1x</span>
@@ -59,19 +61,23 @@
         </div>
     </div>
     <video id="video" controls></video>
-    <ul id="subtitles"></ul>
+    <ul id="subtitles1"></ul>
+    <ul id="subtitles2"></ul>
 
     <script>
         const video = document.getElementById('video');
-        const subtitlesList = document.getElementById('subtitles');
+        const subtitlesList1 = document.getElementById('subtitles1');
+        const subtitlesList2 = document.getElementById('subtitles2');
         const videoFileInput = document.getElementById('videoFile');
-        const subtitleFileInput = document.getElementById('subtitleFile');
+        const subtitleFileInput1 = document.getElementById('subtitleFile1');
+        const subtitleFileInput2 = document.getElementById('subtitleFile2');
         const decreaseSpeedButton = document.getElementById('decreaseSpeed');
         const increaseSpeedButton = document.getElementById('increaseSpeed');
         const speedDisplay = document.getElementById('speedDisplay');
 
         videoFileInput.addEventListener('change', handleVideoFile);
-        subtitleFileInput.addEventListener('change', handleSubtitleFile);
+        subtitleFileInput1.addEventListener('change', () => handleSubtitleFile(subtitleFileInput1, subtitlesList1));
+        subtitleFileInput2.addEventListener('change', () => handleSubtitleFile(subtitleFileInput2, subtitlesList2));
         decreaseSpeedButton.addEventListener('click', () => changeSpeed(-0.1));
         increaseSpeedButton.addEventListener('click', () => changeSpeed(0.1));
 
@@ -83,14 +89,14 @@
             }
         }
 
-        function handleSubtitleFile(event) {
-            const file = event.target.files[0];
+        function handleSubtitleFile(input, subtitlesList) {
+            const file = input.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const subtitles = parseSRT(e.target.result);
-                    displaySubtitles(subtitles);
-                    setupVideoEvents(subtitles);
+                    displaySubtitles(subtitles, subtitlesList);
+                    setupVideoEvents(subtitles, subtitlesList);
                 }
                 reader.readAsText(file);
             }
@@ -123,7 +129,7 @@
             );
         }
 
-        function displaySubtitles(subtitles) {
+        function displaySubtitles(subtitles, subtitlesList) {
             subtitlesList.innerHTML = ''; // Clear previous subtitles
             subtitles.forEach((subtitle, index) => {
                 const li = document.createElement('li');
@@ -140,13 +146,13 @@
             });
         }
 
-        function setupVideoEvents(subtitles) {
+        function setupVideoEvents(subtitles, subtitlesList) {
             video.addEventListener('timeupdate', () => {
                 const currentTime = video.currentTime;
                 const activeSubtitle = subtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
                 document.querySelectorAll('.subtitle').forEach(sub => sub.classList.remove('active'));
                 if (activeSubtitle) {
-                    const activeElement = document.querySelector(`.subtitle[data-index="${subtitles.indexOf(activeSubtitle)}"]`);
+                    const activeElement = subtitlesList.querySelector(`.subtitle[data-index="${subtitles.indexOf(activeSubtitle)}"]`);
                     activeElement.classList.add('active');
                     activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
