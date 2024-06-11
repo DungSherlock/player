@@ -14,8 +14,9 @@
             max-width: 600px;
             display: block;
             margin-bottom: 20px;
+            position: relative;
         }
-        #subtitles1, #subtitles2 {
+        #subtitles1 {
             max-height: 150px;
             overflow-y: auto;
             border: 1px solid #ccc;
@@ -46,38 +47,45 @@
         .speed-control button {
             margin: 0 5px;
         }
+        #subtitleOverlay {
+            position: absolute;
+            bottom: 10%;
+            width: 100%;
+            text-align: center;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            font-size: 18px;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
     <h1>Video with Subtitles</h1>
     <div class="controls">
         <input type="file" id="videoFile" accept="video/*">
-        <input type="file" id="subtitleFile1" accept=".srt">
-        <input type="file" id="subtitleFile2" accept=".srt">
         <div class="speed-control">
             <button id="decreaseSpeed">-</button>
             <span id="speedDisplay">1x</span>
             <button id="increaseSpeed">+</button>
         </div>
     </div>
-    <video id="video" controls></video>
+    <video id="video" controls>
+        <div id="subtitleOverlay"></div>
+    </video>
     <ul id="subtitles1"></ul>
-    <ul id="subtitles2"></ul>
 
     <script>
         const video = document.getElementById('video');
         const subtitlesList1 = document.getElementById('subtitles1');
-        const subtitlesList2 = document.getElementById('subtitles2');
         const videoFileInput = document.getElementById('videoFile');
-        const subtitleFileInput1 = document.getElementById('subtitleFile1');
-        const subtitleFileInput2 = document.getElementById('subtitleFile2');
         const decreaseSpeedButton = document.getElementById('decreaseSpeed');
         const increaseSpeedButton = document.getElementById('increaseSpeed');
         const speedDisplay = document.getElementById('speedDisplay');
+        const subtitleOverlay = document.getElementById('subtitleOverlay');
+
+        let subtitleData2 = [];
 
         videoFileInput.addEventListener('change', handleVideoFile);
-        subtitleFileInput1.addEventListener('change', () => handleSubtitleFile(subtitleFileInput1, subtitlesList1));
-        subtitleFileInput2.addEventListener('change', () => handleSubtitleFile(subtitleFileInput2, subtitlesList2));
         decreaseSpeedButton.addEventListener('click', () => changeSpeed(-0.1));
         increaseSpeedButton.addEventListener('click', () => changeSpeed(0.1));
 
@@ -86,20 +94,29 @@
             if (file) {
                 const fileURL = URL.createObjectURL(file);
                 video.src = fileURL;
+
+                const fileName = file.name.split('.').slice(0, -1).join('.');
+                const subtitlePath1 = fileName + '.srt';
+                const subtitlePath2 = fileName + '_2.srt';
+
+                loadSubtitle(subtitlePath1, subtitlesList1);
+                loadSubtitle(subtitlePath2, null, true);
             }
         }
 
-        function handleSubtitleFile(input, subtitlesList) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const subtitles = parseSRT(e.target.result);
-                    displaySubtitles(subtitles, subtitlesList);
-                    setupVideoEvents(subtitles, subtitlesList);
-                }
-                reader.readAsText(file);
-            }
+        function loadSubtitle(path, subtitlesList, isOverlay = false) {
+            fetch(path)
+                .then(response => response.text())
+                .then(data => {
+                    const subtitles = parseSRT(data);
+                    if (isOverlay) {
+                        subtitleData2 = subtitles;
+                    } else {
+                        displaySubtitles(subtitles, subtitlesList);
+                        setupVideoEvents(subtitles, subtitlesList);
+                    }
+                })
+                .catch(error => console.error('Error loading subtitle:', error));
         }
 
         function parseSRT(data) {
@@ -155,6 +172,13 @@
                     const activeElement = subtitlesList.querySelector(`.subtitle[data-index="${subtitles.indexOf(activeSubtitle)}"]`);
                     activeElement.classList.add('active');
                     activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+                const activeOverlaySubtitle = subtitleData2.find(sub => currentTime >= sub.start && currentTime <= sub.end);
+                if (activeOverlaySubtitle) {
+                    subtitleOverlay.textContent = activeOverlaySubtitle.text;
+                } else {
+                    subtitleOverlay.textContent = '';
                 }
             });
         }
