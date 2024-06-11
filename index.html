@@ -32,11 +32,12 @@
             background-color: #f0f0f0;
         }
         .active {
-            background-color: #e0e0e0;
+            background-color: yellow;
         }
         .controls {
             display: flex;
-            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
             max-width: 600px;
             margin-bottom: 20px;
         }
@@ -63,6 +64,8 @@
     <h1>Video with Subtitles</h1>
     <div class="controls">
         <input type="file" id="videoFile" accept="video/*">
+        <input type="file" id="subtitleFile1" accept=".srt">
+        <input type="file" id="subtitleFile2" accept=".srt">
         <div class="speed-control">
             <button id="decreaseSpeed">-</button>
             <span id="speedDisplay">1x</span>
@@ -78,14 +81,19 @@
         const video = document.getElementById('video');
         const subtitlesList1 = document.getElementById('subtitles1');
         const videoFileInput = document.getElementById('videoFile');
+        const subtitleFileInput1 = document.getElementById('subtitleFile1');
+        const subtitleFileInput2 = document.getElementById('subtitleFile2');
         const decreaseSpeedButton = document.getElementById('decreaseSpeed');
         const increaseSpeedButton = document.getElementById('increaseSpeed');
         const speedDisplay = document.getElementById('speedDisplay');
         const subtitleOverlay = document.getElementById('subtitleOverlay');
 
+        let subtitleData1 = [];
         let subtitleData2 = [];
 
         videoFileInput.addEventListener('change', handleVideoFile);
+        subtitleFileInput1.addEventListener('change', () => handleSubtitleFile(subtitleFileInput1, subtitlesList1, false));
+        subtitleFileInput2.addEventListener('change', () => handleSubtitleFile(subtitleFileInput2, null, true));
         decreaseSpeedButton.addEventListener('click', () => changeSpeed(-0.1));
         increaseSpeedButton.addEventListener('click', () => changeSpeed(0.1));
 
@@ -104,6 +112,25 @@
             }
         }
 
+        function handleSubtitleFile(input, subtitlesList, isOverlay) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const data = event.target.result;
+                    const subtitles = parseSRT(data);
+                    if (isOverlay) {
+                        subtitleData2 = subtitles;
+                    } else {
+                        subtitleData1 = subtitles;
+                        displaySubtitles(subtitles, subtitlesList);
+                        setupVideoEvents(subtitleData1, subtitleData2, subtitlesList);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
         function loadSubtitle(path, subtitlesList, isOverlay = false) {
             fetch(path)
                 .then(response => response.text())
@@ -112,8 +139,9 @@
                     if (isOverlay) {
                         subtitleData2 = subtitles;
                     } else {
+                        subtitleData1 = subtitles;
                         displaySubtitles(subtitles, subtitlesList);
-                        setupVideoEvents(subtitles, subtitlesList);
+                        setupVideoEvents(subtitleData1, subtitleData2, subtitlesList);
                     }
                 })
                 .catch(error => console.error('Error loading subtitle:', error));
@@ -163,20 +191,23 @@
             });
         }
 
-        function setupVideoEvents(subtitles, subtitlesList) {
+        function setupVideoEvents(subtitles1, subtitles2, subtitlesList) {
             video.addEventListener('timeupdate', () => {
                 const currentTime = video.currentTime;
-                const activeSubtitle = subtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
+
+                // Handle first subtitle track
+                const activeSubtitle1 = subtitles1.find(sub => currentTime >= sub.start && currentTime <= sub.end);
                 document.querySelectorAll('.subtitle').forEach(sub => sub.classList.remove('active'));
-                if (activeSubtitle) {
-                    const activeElement = subtitlesList.querySelector(`.subtitle[data-index="${subtitles.indexOf(activeSubtitle)}"]`);
-                    activeElement.classList.add('active');
-                    activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (activeSubtitle1) {
+                    const activeElement1 = subtitlesList.querySelector(`.subtitle[data-index="${subtitles1.indexOf(activeSubtitle1)}"]`);
+                    activeElement1.classList.add('active');
+                    activeElement1.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
 
-                const activeOverlaySubtitle = subtitleData2.find(sub => currentTime >= sub.start && currentTime <= sub.end);
-                if (activeOverlaySubtitle) {
-                    subtitleOverlay.textContent = activeOverlaySubtitle.text;
+                // Handle second subtitle track
+                const activeSubtitle2 = subtitles2.find(sub => currentTime >= sub.start && currentTime <= sub.end);
+                if (activeSubtitle2) {
+                    subtitleOverlay.textContent = activeSubtitle2.text;
                 } else {
                     subtitleOverlay.textContent = '';
                 }
