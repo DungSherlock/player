@@ -32,12 +32,32 @@
         .active {
             background-color: #e0e0e0;
         }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            max-width: 600px;
+            margin-bottom: 20px;
+        }
+        .speed-control {
+            display: flex;
+            align-items: center;
+        }
+        .speed-control button {
+            margin: 0 5px;
+        }
     </style>
 </head>
 <body>
     <h1>Video with Subtitles</h1>
-    <input type="file" id="videoFile" accept="video/*">
-    <input type="file" id="subtitleFile" accept=".srt">
+    <div class="controls">
+        <input type="file" id="videoFile" accept="video/*">
+        <input type="file" id="subtitleFile" accept=".srt">
+        <div class="speed-control">
+            <button id="decreaseSpeed">-</button>
+            <span id="speedDisplay">1x</span>
+            <button id="increaseSpeed">+</button>
+        </div>
+    </div>
     <video id="video" controls></video>
     <ul id="subtitles"></ul>
 
@@ -46,9 +66,14 @@
         const subtitlesList = document.getElementById('subtitles');
         const videoFileInput = document.getElementById('videoFile');
         const subtitleFileInput = document.getElementById('subtitleFile');
+        const decreaseSpeedButton = document.getElementById('decreaseSpeed');
+        const increaseSpeedButton = document.getElementById('increaseSpeed');
+        const speedDisplay = document.getElementById('speedDisplay');
 
         videoFileInput.addEventListener('change', handleVideoFile);
         subtitleFileInput.addEventListener('change', handleSubtitleFile);
+        decreaseSpeedButton.addEventListener('click', () => changeSpeed(-0.1));
+        increaseSpeedButton.addEventListener('click', () => changeSpeed(0.1));
 
         function handleVideoFile(event) {
             const file = event.target.files[0];
@@ -71,7 +96,6 @@
             }
         }
 
-        // Function to parse SRT file
         function parseSRT(data) {
             const subtitles = [];
             const srtBlocks = data.split('\n\n');
@@ -90,7 +114,6 @@
             return subtitles;
         }
 
-        // Function to parse time
         function parseTime(hours, minutes, seconds, milliseconds) {
             return (
                 parseInt(hours) * 3600 +
@@ -100,7 +123,6 @@
             );
         }
 
-        // Function to display subtitles
         function displaySubtitles(subtitles) {
             subtitlesList.innerHTML = ''; // Clear previous subtitles
             subtitles.forEach((subtitle, index) => {
@@ -118,7 +140,6 @@
             });
         }
 
-        // Function to set up video events
         function setupVideoEvents(subtitles) {
             video.addEventListener('timeupdate', () => {
                 const currentTime = video.currentTime;
@@ -130,6 +151,13 @@
                     activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             });
+        }
+
+        function changeSpeed(change) {
+            let newSpeed = Math.round((video.playbackRate + change) * 10) / 10;
+            newSpeed = Math.max(0.1, Math.min(newSpeed, 5)); // Limit speed between 0.1x and 5x
+            video.playbackRate = newSpeed;
+            speedDisplay.textContent = `${newSpeed}x`;
         }
     </script>
 </body>
