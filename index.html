@@ -66,17 +66,12 @@
         <input type="file" id="videoFile" accept="video/*">
     </div>
     <div>
-        <label for="subtitleFile1">Choose subtitle file 1:</label>
-        <input type="file" id="subtitleFile1" accept=".vtt">
-    </div>
-    <div>
-        <label for="subtitleFile2">Choose subtitle file 2:</label>
-        <input type="file" id="subtitleFile2" accept=".vtt">
+        <label for="subtitleFile">Choose subtitle file:</label>
+        <input type="file" id="subtitleFile" accept=".vtt, .srt">
     </div>
     <div class="video-container">
         <video id="videoPlayer" style="display: none;">
-            <track id="subtitleTrack1" kind="subtitles" srclang="en" label="English 1">
-            <track id="subtitleTrack2" kind="subtitles" srclang="en" label="English 2">
+            <track id="subtitleTrack" kind="subtitles" srclang="en" label="English">
         </video>
         <div id="customVideoPlayer" style="background-color: black; width: 100%; height: 0; padding-bottom: 56.25%; position: relative;">
             <div id="videoOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
@@ -100,15 +95,13 @@
     </div>
     <script>
         document.getElementById('videoFile').addEventListener('change', handleVideoFile);
-        document.getElementById('subtitleFile1').addEventListener('change', handleSubtitleFile1);
-        document.getElementById('subtitleFile2').addEventListener('change', handleSubtitleFile2);
+        document.getElementById('subtitleFile').addEventListener('change', handleSubtitleFile);
         document.getElementById('playPauseBtn').addEventListener('click', togglePlayPause);
         document.getElementById('muteBtn').addEventListener('click', toggleMute);
         document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
 
         const videoPlayer = document.getElementById('videoPlayer');
-        const subtitleTrack1 = document.getElementById('subtitleTrack1');
-        const subtitleTrack2 = document.getElementById('subtitleTrack2');
+        const subtitleTrack = document.getElementById('subtitleTrack');
         const transcriptContainer = document.getElementById('transcript');
         const customVideoPlayer = document.getElementById('customVideoPlayer');
         const customVideo = document.getElementById('customVideo');
@@ -125,35 +118,32 @@
             }
         }
 
-        function handleSubtitleFile1(event) {
+        function handleSubtitleFile(event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const url = URL.createObjectURL(file);
-                    subtitleTrack1.src = url;
-                    subtitleTrack1.mode = 'showing';
-                    loadTranscript(e.target.result, 'transcript1');
+                    const extension = file.name.split('.').pop();
+                    if (extension === 'vtt') {
+                        subtitleTrack.src = url;
+                        subtitleTrack.mode = 'showing';
+                        loadTranscript(e.target.result);
+                    } else if (extension === 'srt') {
+                        // Convert SRT to VTT
+                        const vttContent = convertSRTtoVTT(e.target.result);
+                        const blob = new Blob([vttContent], { type: 'text/vtt' });
+                        const vttUrl = URL.createObjectURL(blob);
+                        subtitleTrack.src = vttUrl;
+                        subtitleTrack.mode = 'showing';
+                        loadTranscript(vttContent);
+                    }
                 };
                 reader.readAsText(file);
             }
         }
 
-        function handleSubtitleFile2(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const url = URL.createObjectURL(file);
-                    subtitleTrack2.src = url;
-                    subtitleTrack2.mode = 'showing';
-                    loadTranscript(e.target.result, 'transcript2');
-                };
-                reader.readAsText(file);
-            }
-        }
-
-        function loadTranscript(data, id) {
+        function loadTranscript(data) {
             const cues = parseVTT(data);
             transcriptContainer.innerHTML = ''; // Clear existing transcript
             cues.forEach(cue => {
@@ -192,27 +182,34 @@
                 customVideo.webkitRequestFullscreen();
             } else if (customVideo.msRequestFullscreen) {
                 customVideo.msRequestFullscreen();
-           }
+            }
+        }
+
+        function parseVTT(data) {
+            const cues = [];
+            const regex = /(\d{2}):(\d{2}):(\d{2})\.(\d{3}) --> (\d{2}):(\d{2}):(\d{2})\.(\d{3})\n([\s\S]*?)(?=\n \n|\n*$)/g;
+let match;
+while ((match = regex.exec(data)) !== null) {
+cues.push({
+startTime: toSeconds(match[1], match[2], match[3], match[4]),
+endTime: toSeconds(match[5], match[6], match[7], match[8]),
+text: match[9].replace(/\n/g, ’ ’)
+});
+}
+return cues;
 }
 
-    function parseVTT(data) {
-        const cues = [];
-        const regex = /(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})\n([\s\S]*?)(?=\n\n|\n*$)/g;
-        let match;
-        while ((match = regex.exec(data)) !== null) {
-            cues.push({
-                startTime: toSeconds(match[1]),
-                endTime: toSeconds(match[2]),
-                text: match[3].replace(/\n/g, ' ')
-            });
-        }
-        return cues;
+    function toSeconds(hours, minutes, seconds, milliseconds) {
+        return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds) + parseInt(milliseconds) / 1000;
     }
 
-    function toSeconds(timestamp) {
-        const [hours, minutes, seconds] = timestamp.split(':');
-        return parseFloat(hours) * 3600 + parseFloat(minutes) * 60 + parseFloat(seconds);
+    function convertSRTtoVTT(srtContent) {
+        // Remove indexes and replace commas with dots
+        const vttContent = srtContent.replace(/\d+\n/g, '').replace(/,/g, '.');
+        // Replace arrows with '-->'
+        return vttContent.replace(/ --> /g, ' --> ');
     }
 </script>
+
 </body>
 </html>
