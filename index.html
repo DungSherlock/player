@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Player with Subtitles and Transcript</title>
+    <title>Custom Video Player with Subtitles and Transcript</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -17,6 +17,7 @@
         .video-container {
             width: 80%;
             margin-top: 20px;
+            position: relative;
         }
 
         .transcript-container {
@@ -47,6 +48,16 @@
         .transcript-item.active {
             background-color: #e0e0ff;
         }
+
+        #customControls {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        #customControls button {
+            margin: 0 5px;
+        }
     </style>
 </head>
 <body>
@@ -63,10 +74,23 @@
         <input type="file" id="subtitleFile2" accept=".vtt">
     </div>
     <div class="video-container">
-        <video id="videoPlayer" controls>
+        <video id="videoPlayer" style="display: none;">
             <track id="subtitleTrack1" kind="subtitles" srclang="en" label="English 1">
             <track id="subtitleTrack2" kind="subtitles" srclang="en" label="English 2">
         </video>
+        <div id="customVideoPlayer" style="background-color: black; width: 100%; height: 0; padding-bottom: 56.25%; position: relative;">
+            <div id="videoOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                <video id="customVideo" style="width: 100%; height: 100%; object-fit: cover;">
+                    <source src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <div id="customControls" style="position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: center;">
+                    <button id="playPauseBtn">Play</button>
+                    <button id="muteBtn">Mute</button>
+                    <button id="fullscreenBtn">Fullscreen</button>
+                </div>
+            </div>
+        </div>
     </div>
     <div class="transcript-container">
         <h3>Transcript</h3>
@@ -78,17 +102,26 @@
         document.getElementById('videoFile').addEventListener('change', handleVideoFile);
         document.getElementById('subtitleFile1').addEventListener('change', handleSubtitleFile1);
         document.getElementById('subtitleFile2').addEventListener('change', handleSubtitleFile2);
+        document.getElementById('playPauseBtn').addEventListener('click', togglePlayPause);
+        document.getElementById('muteBtn').addEventListener('click', toggleMute);
+        document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
 
         const videoPlayer = document.getElementById('videoPlayer');
         const subtitleTrack1 = document.getElementById('subtitleTrack1');
         const subtitleTrack2 = document.getElementById('subtitleTrack2');
         const transcriptContainer = document.getElementById('transcript');
+        const customVideoPlayer = document.getElementById('customVideoPlayer');
+        const customVideo = document.getElementById('customVideo');
 
         function handleVideoFile(event) {
             const file = event.target.files[0];
             if (file) {
                 const url = URL.createObjectURL(file);
-                videoPlayer.src = url;
+                customVideo.src = url;
+                customVideo.style.display = 'block';
+                videoPlayer.style.display = 'none';
+                customVideoPlayer.style.height = 'auto';
+                customVideoPlayer.style.paddingBottom = '0';
             }
         }
 
@@ -132,43 +165,54 @@
             });
         }
 
-        videoPlayer.addEventListener('timeupdate', () => {
-            const currentTime = videoPlayer.currentTime;
-            const transcriptItems = document.querySelectorAll('.transcript-item');
-            transcriptItems.forEach(item => {
-                item.classList.remove('active');
-                const startTime = parseFloat(item.dataset.startTime);
-                if (currentTime >= startTime && currentTime < (startTime + 5)) {
-                    item.classList.add('active');
-                }
+        function togglePlayPause() {
+            if (customVideo.paused) {
+                customVideo.play();
+                playPauseBtn.textContent = 'Pause';
+            } else {
+                customVideo.pause();
+                playPauseBtn.textContent = 'Play';
+            }
+        }
+
+        function toggleMute() {
+            if (customVideo.muted) {
+                customVideo.muted = false;
+                muteBtn.textContent = 'Mute';
+            } else {
+                customVideo.muted = true;
+                muteBtn.textContent = 'Unmute';
+            }
+        }
+
+        function toggleFullscreen() {
+            if (customVideo.requestFullscreen) {
+                customVideo.requestFullscreen();
+            } else if (customVideo.webkitRequestFullscreen) {
+                customVideo.webkitRequestFullscreen();
+            } else if (customVideo.msRequestFullscreen) {
+                customVideo.msRequestFullscreen();
+           }
+}
+
+    function parseVTT(data) {
+        const cues = [];
+        const regex = /(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})\n([\s\S]*?)(?=\n\n|\n*$)/g;
+        let match;
+        while ((match = regex.exec(data)) !== null) {
+            cues.push({
+                startTime: toSeconds(match[1]),
+                endTime: toSeconds(match[2]),
+                text: match[3].replace(/\n/g, ' ')
             });
-        });
-
-        transcriptContainer.addEventListener('click', (e) => {
-            if (e.target.classList.contains('transcript-item')) {
-                const startTime = parseFloat(e.target.dataset.startTime);
-                videoPlayer.currentTime = startTime;
-            }
-        });
-
-        function parseVTT(data) {
-            const cues = [];
-            const regex = /(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})\n([\s\S]*?)(?=\n\n|\n*$)/g;
-            let match;
-            while ((match = regex.exec(data)) !== null) {
-                cues.push({
-                    startTime: toSeconds(match[1]),
-                    endTime: toSeconds(match[2]),
-                    text: match[3].replace(/\n/g, ' ')
-                });
-            }
-            return cues;
         }
+        return cues;
+    }
 
-        function toSeconds(timestamp) {
-            const [hours, minutes, seconds] = timestamp.split(':');
-            return parseFloat(hours) * 3600 + parseFloat(minutes) * 60 + parseFloat(seconds);
-        }
-    </script>
+    function toSeconds(timestamp) {
+        const [hours, minutes, seconds] = timestamp.split(':');
+        return parseFloat(hours) * 3600 + parseFloat(minutes) * 60 + parseFloat(seconds);
+    }
+</script>
 </body>
 </html>
