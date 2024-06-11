@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Custom Video Player with Subtitles</title>
+    <link href="https://vjs.zencdn.net/7.14.3/video-js.css" rel="stylesheet" />
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -17,10 +19,6 @@
         .video-container {
             width: 80%;
             position: relative;
-        }
-
-        #videoPlayer {
-            width: 100%;
         }
 
         .transcript-container {
@@ -62,8 +60,8 @@
         <input type="file" id="subtitleFile" accept=".srt">
     </div>
     <div class="video-container">
-        <video id="videoPlayer" controls>
-            <track id="subtitleTrack" kind="subtitles" srclang="en" label="English">
+        <video id="videoPlayer" class="video-js vjs-default-skin" controls preload="auto" width="640" height="264">
+            <track id="subtitleTrack" kind="subtitles" srclang="en" label="English" default>
         </video>
         <div id="captionOverlay"></div>
     </div>
@@ -72,23 +70,23 @@
         <div id="transcript"></div>
     </div>
 
+    <script src="https://vjs.zencdn.net/7.14.3/video.js"></script>
     <script>
         document.getElementById('videoFile').addEventListener('change', handleVideoFile);
         document.getElementById('subtitleFile').addEventListener('change', handleSubtitleFile);
 
-        const videoPlayer = document.getElementById('videoPlayer');
-        const subtitleTrack = document.getElementById('subtitleTrack');
+        const videoPlayer = videojs('videoPlayer');
         const captionOverlay = document.getElementById('captionOverlay');
         const transcriptContainer = document.getElementById('transcript');
 
-        videoPlayer.addEventListener('timeupdate', updateCaption);
+        videoPlayer.on('timeupdate', updateCaption);
 
         function handleVideoFile(event) {
             const file = event.target.files[0];
             if (file) {
                 const url = URL.createObjectURL(file);
-                videoPlayer.src = url;
-                videoPlayer.style.display = 'block';
+                videoPlayer.src({ type: file.type, src: url });
+                videoPlayer.play();
             }
         }
 
@@ -109,12 +107,12 @@
             const vttContent = convertSRTtoVTT(subtitles);
             const blob = new Blob([vttContent], { type: 'text/vtt' });
             const url = URL.createObjectURL(blob);
-            subtitleTrack.src = url;
-            subtitleTrack.mode = 'showing';
+            const track = videoPlayer.addRemoteTextTrack({ kind: 'subtitles', srclang: 'en', label: 'English', src: url }, false);
+            track.track.mode = 'showing';
         }
 
         function updateCaption() {
-            const currentTime = videoPlayer.currentTime;
+            const currentTime = videoPlayer.currentTime();
             const subtitles = getCaptions();
 
             let currentCaption = '';
@@ -150,7 +148,7 @@
                 transcriptContainer.appendChild(transcriptItem);
 
                 transcriptItem.addEventListener('click', () => {
-                    videoPlayer.currentTime = subtitle.startTime;
+                    videoPlayer.currentTime(subtitle.startTime);
                     videoPlayer.play();
                 });
             });
