@@ -36,24 +36,40 @@
 </head>
 <body>
     <h1>Video with Subtitles</h1>
-    <video id="video" controls>
-        <source src="your-video-file.mp4" type="video/mp4">
-        Your browser does not support the video tag.
-    </video>
+    <input type="file" id="videoFile" accept="video/*">
+    <input type="file" id="subtitleFile" accept=".srt">
+    <video id="video" controls></video>
     <ul id="subtitles"></ul>
 
     <script>
         const video = document.getElementById('video');
         const subtitlesList = document.getElementById('subtitles');
+        const videoFileInput = document.getElementById('videoFile');
+        const subtitleFileInput = document.getElementById('subtitleFile');
 
-        // Read the subtitle file
-        fetch('your-subtitle-file.srt')
-            .then(response => response.text())
-            .then(data => {
-                const subtitles = parseSRT(data);
-                displaySubtitles(subtitles);
-                setupVideoEvents(subtitles);
-            });
+        videoFileInput.addEventListener('change', handleVideoFile);
+        subtitleFileInput.addEventListener('change', handleSubtitleFile);
+
+        function handleVideoFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                video.src = fileURL;
+            }
+        }
+
+        function handleSubtitleFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const subtitles = parseSRT(e.target.result);
+                    displaySubtitles(subtitles);
+                    setupVideoEvents(subtitles);
+                }
+                reader.readAsText(file);
+            }
+        }
 
         // Function to parse SRT file
         function parseSRT(data) {
@@ -86,6 +102,7 @@
 
         // Function to display subtitles
         function displaySubtitles(subtitles) {
+            subtitlesList.innerHTML = ''; // Clear previous subtitles
             subtitles.forEach((subtitle, index) => {
                 const li = document.createElement('li');
                 li.textContent = subtitle.text;
