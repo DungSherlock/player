@@ -1,210 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custom Video Player with Subtitles</title>
-    <link href="https://vjs.zencdn.net/7.14.3/video-js.css" rel="stylesheet" />
-
+    <title>Embedded Code</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .video-container {
-            width: 80%;
-            position: relative;
-        }
-
-        .transcript-container {
-            width: 80%;
-            margin-top: 20px;
-        }
-
-        .transcript-item {
-            padding: 5px;
-            cursor: pointer;
-        }
-
-        .transcript-item:hover {
-            background-color: #f0f0f0;
-        }
-
-        .transcript-item.active {
-            background-color: #e0e0ff;
-        }
-
-        #captionOverlay {
-            position: absolute;
-            bottom: 30px;
+        #embedded-code {
             width: 100%;
-            text-align: center;
-            color: white;
-            font-size: 18px;
-            text-shadow: 2px 2px 4px #000;
+            height: 300px;
+            border: 1px solid #ccc;
+            padding: 10px;
         }
     </style>
 </head>
 <body>
-    <div>
-        <label for="videoFile">Choose a video file:</label>
-        <input type="file" id="videoFile" accept="video/*">
-    </div>
-    <div>
-        <label for="subtitleFile">Choose a subtitle file:</label>
-        <input type="file" id="subtitleFile" accept=".srt">
-    </div>
-    <div class="video-container">
-        <video id="videoPlayer" class="video-js vjs-default-skin" controls preload="auto" width="640" height="264">
-            <track id="subtitleTrack" kind="subtitles" srclang="en" label="English" default>
-        </video>
-        <div id="captionOverlay"></div>
-    </div>
-    <div class="transcript-container">
-        <h3>Transcript</h3>
-        <div id="transcript"></div>
-    </div>
-
-    <script src="https://vjs.zencdn.net/7.14.3/video.js"></script>
+    <h1>Embedded Code Example</h1>
+    
+    <label for="embedded-input">Nhập đoạn mã nhúng:</label>
+    <textarea id="embedded-input" rows="4" cols="50"></textarea>
+    
+    <button onclick="embedCode()">Hiển thị</button>
+    
+    <div id="embedded-code"></div>
+    
     <script>
-        document.getElementById('videoFile').addEventListener('change', handleVideoFile);
-        document.getElementById('subtitleFile').addEventListener('change', handleSubtitleFile);
-
-        const videoPlayer = videojs('videoPlayer');
-        const captionOverlay = document.getElementById('captionOverlay');
-        const transcriptContainer = document.getElementById('transcript');
-
-        videoPlayer.on('timeupdate', updateCaption);
-
-        function handleVideoFile(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const url = URL.createObjectURL(file);
-                videoPlayer.src({ type: file.type, src: url });
-                videoPlayer.play();
-            }
-        }
-
-        function handleSubtitleFile(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const subtitles = parseSRT(e.target.result);
-                    createTrack(subtitles);
-                    loadTranscript(subtitles);
-                };
-                reader.readAsText(file);
-            }
-        }
-
-        function createTrack(subtitles) {
-            const vttContent = convertSRTtoVTT(subtitles);
-            const blob = new Blob([vttContent], { type: 'text/vtt' });
-            const url = URL.createObjectURL(blob);
-            const track = videoPlayer.addRemoteTextTrack({ kind: 'subtitles', srclang: 'en', label: 'English', src: url }, false);
-            track.track.mode = 'showing';
-        }
-
-        function updateCaption() {
-            const currentTime = videoPlayer.currentTime();
-            const subtitles = getCaptions();
-
-            let currentCaption = '';
-            for (const caption of subtitles) {
-                if (currentTime >= caption.startTime && currentTime <= caption.endTime) {
-                    currentCaption = caption.text;
-                    break;
-                }
-            }
-
-            captionOverlay.textContent = currentCaption;
-
-            const transcriptItems = document.querySelectorAll('.transcript-item');
-            transcriptItems.forEach(item => {
-                const startTime = parseFloat(item.dataset.startTime);
-                const endTime = parseFloat(item.dataset.endTime);
-                if (currentTime >= startTime && currentTime <= endTime) {
-                    item.classList.add('active');
-                } else {
-                    item.classList.remove('active');
-                }
-            });
-        }
-
-        function loadTranscript(subtitles) {
-            transcriptContainer.innerHTML = '';
-            subtitles.forEach(subtitle => {
-                const transcriptItem = document.createElement('div');
-                transcriptItem.className = 'transcript-item';
-                transcriptItem.dataset.startTime = subtitle.startTime;
-                transcriptItem.dataset.endTime = subtitle.endTime;
-                transcriptItem.textContent = subtitle.text;
-                transcriptContainer.appendChild(transcriptItem);
-
-                transcriptItem.addEventListener('click', () => {
-                    videoPlayer.currentTime(subtitle.startTime);
-                    videoPlayer.play();
-                });
-            });
-        }
-
-        function parseSRT(data) {
-            const lines = data.trim().split(/\r?\n/);
-            const subtitles = [];
-            let subtitle = {};
-            for (const line of lines) {
-                if (line.includes('-->')) {
-                    const [startTime, endTime] = line.split(' --> ');
-                    subtitle.startTime = parseTime(startTime);
-                    subtitle.endTime = parseTime(endTime);
-                } else if (!line.trim()) {
-                    if (Object.keys(subtitle).length !== 0) {
-                        subtitles.push(subtitle);
-                        subtitle = {};
-                    }
-                } else {
-                    subtitle.text = subtitle.text ? subtitle.text + ' ' + line.trim() : line.trim();
-                }
-            }
-            if (Object.keys(subtitle).length !== 0) {
-                subtitles.push(subtitle);
-            }
-            return subtitles;
-        }
-
-        function parseTime(timeString) {
-            const parts = timeString.split(':');
-            const hours = parseInt(parts[0]);
-            const minutes = parseInt(parts[1]);
-            const seconds = parseFloat(parts[2].replace(',', '.'));
-            return hours * 3600 + minutes * 60 + seconds;
-        }
-
-        function convertSRTtoVTT(subtitles) {
-            let vttContent = 'WEBVTT\n\n';
-            subtitles.forEach(subtitle => {
-                const start = formatTime(subtitle.startTime);
-                const end = formatTime(subtitle.endTime);
-                vttContent += `${start} --> ${end}\n${subtitle.text}\n\n`;
-            });
-            return vttContent;
-        }
-
-        function formatTime(seconds) {
-            const hours = Math.floor(seconds / 3600).toString().padStart(2, '0');
-            const minutes = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
-            const secs = (seconds % 60).toFixed(3).replace('.', ',').padStart(6, '0');
-            return `${hours}:${minutes}:${secs}`;
-        }
-
-        function getCaptions() {
-            return parseSRT(document.getElementById('subtitleTrack').src);
+        function embedCode() {
+            var embeddedInput = document.getElementById('embedded-input').value;
+            var embeddedCodeDiv = document.getElementById('embedded-code');
+            embeddedCodeDiv.innerHTML = embeddedInput;
         }
     </script>
 </body>
